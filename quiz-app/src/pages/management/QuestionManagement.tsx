@@ -7,6 +7,7 @@ import {
   useDeleteQuestion
 } from '@/hooks/useQuestion';
 import Modal from '@/components/common/Modal';
+import ConfirmDialog from '@/components/common/ConfirmDialog';
 import createIcon from '../../assets/images/user-management/Frame_1482_3473.png';
 import clearIcon from '../../assets/images/user-management/Frame_1482_3362.png';
 import searchIcon from '../../assets/images/user-management/Frame_1482_3486.png';
@@ -57,6 +58,12 @@ const QuestionManagement = () => {
   
   const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
   const [isAnswerModalOpen, setIsAnswerModalOpen] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   // API hooks
   const { data: questionsResponse, isLoading, error, refetch } = useQuestions({
@@ -226,26 +233,33 @@ const QuestionManagement = () => {
   };
 
   const handleDeleteQuestion = async (id: string) => {
-    if (!globalThis.confirm('Are you sure you want to delete this question?')) {
-      return;
-    }
-
-    try {
-      await deleteQuestion.mutateAsync(id);
-      toast.success('Question deleted successfully!');
-      refetch();
-    } catch (error) {
-      console.error('Delete question error:', error);
-      toast.error('Failed to delete question');
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Question',
+      message: 'Are you sure you want to delete this question? This action cannot be undone.',
+      onConfirm: async () => {
+        try {
+          await deleteQuestion.mutateAsync(id);
+          toast.success('Question deleted successfully!');
+          refetch();
+        } catch (error) {
+          console.error('Delete question error:', error);
+          toast.error('Failed to delete question');
+        }
+      },
+    });
   };
 
   const handleDeleteAnswer = (id: string) => {
-    if (!globalThis.confirm('Are you sure you want to delete this answer?')) {
-      return;
-    }
-    setAnswers(prev => prev.filter(ans => ans.id !== id));
-    toast.success('Answer removed!');
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Answer',
+      message: 'Are you sure you want to delete this answer?',
+      onConfirm: () => {
+        setAnswers(prev => prev.filter(ans => ans.id !== id));
+        toast.success('Answer removed!');
+      },
+    });
   };
 
   const handlePageChange = (newPage: number) => {
@@ -679,6 +693,17 @@ const QuestionManagement = () => {
               </div>
             </form>
           </Modal>
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 };

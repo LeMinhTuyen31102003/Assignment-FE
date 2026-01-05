@@ -5,29 +5,33 @@ export interface Quiz {
   id: string;
   title: string;
   description: string;
-  thumbnail?: string;
   durationMinutes: number;
-  difficulty?: 'Easy' | 'Medium' | 'Hard';
   totalQuestions?: number | null;
-  questions?: Question[];
-  createdAt?: string;
-  updatedAt?: string;
+  questions?: QuizQuestion[];
+  createdAt: string;
+  updatedAt: string;
 }
 
+// Question in quiz list (simplified)
+export interface QuizQuestion {
+  id: string;
+  content: string;
+  score: number;
+}
+
+// Full question details
 export interface Question {
   id: string;
   content: string;
   type: string;
+  score: number;
   answers: Answer[];
-  order?: number;
-  status?: string;
 }
 
 export interface Answer {
   id: string;
   content: string;
   isCorrect: boolean;
-  status?: string;
 }
 
 interface PaginatedResponse<T> {
@@ -44,15 +48,26 @@ interface PaginatedResponse<T> {
   empty: boolean;
 }
 
-// Fetch all quizzes
-export function useQuizzes(options?: { enabled?: boolean }) {
+export interface QuizQueryParams {
+  page?: number;
+  size?: number;
+  title?: string;
+}
+
+// Fetch all quizzes with pagination
+export function useQuizzes(params?: QuizQueryParams) {
   return useQuery({
-    queryKey: ['quizzes'],
+    queryKey: ['quizzes', params],
     queryFn: async () => {
-      const response = await apiClient.get<PaginatedResponse<Quiz>>('/quizzes');
-      return response.data.content; // Return only the content array
+      const response = await apiClient.get<PaginatedResponse<Quiz>>('/quizzes', {
+        params: {
+          page: params?.page ?? 0,
+          size: params?.size ?? 10,
+          ...(params?.title && { title: params.title }),
+        },
+      });
+      return response.data; // Return full paginated response
     },
-    enabled: options?.enabled ?? true,
   });
 }
 
@@ -80,12 +95,19 @@ export function useQuizQuestions(quizId: string) {
   });
 }
 
+// Quiz creation data (what we send to the API)
+export interface CreateQuizDto {
+  title: string;
+  description: string;
+  durationMinutes: number;
+}
+
 // Create quiz mutation
 export function useCreateQuiz() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (quiz: Omit<Quiz, 'id'>) => {
+    mutationFn: async (quiz: CreateQuizDto) => {
       const response = await apiClient.post<Quiz>('/quizzes', quiz);
       return response.data;
     },

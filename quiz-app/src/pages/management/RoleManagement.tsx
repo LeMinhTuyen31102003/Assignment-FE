@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import Modal from '../../components/common/Modal';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 import createIcon from '../../assets/images/user-management/Frame_1482_3473.png';
 import clearIcon from '../../assets/images/user-management/Frame_1482_3362.png';
 import searchIcon from '../../assets/images/user-management/Frame_1482_3486.png';
@@ -25,6 +27,20 @@ const RoleManagement = () => {
   const [roleName, setRoleName] = useState('');
   const [roleDescription, setRoleDescription] = useState('');
   const [roleStatusActive, setRoleStatusActive] = useState(false);
+  
+  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+  const [editingRoleId, setEditingRoleId] = useState<number | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   const roles: Role[] = [
     { id: 1, name: 'Admin', description: 'Full Access', status: 'Yes' },
@@ -42,26 +58,49 @@ const RoleManagement = () => {
   };
 
   const handleCreate = () => {
-    console.log('Creating role...');
+    setEditingRoleId(null);
+    setRoleName('');
+    setRoleDescription('');
+    setRoleStatusActive(false);
+    setIsRoleModalOpen(true);
   };
 
   const handleSaveRole = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Saving role...', { roleName, roleDescription, roleStatusActive });
-  };
-
-  const handleCancelRole = () => {
+    setIsRoleModalOpen(false);
+    setEditingRoleId(null);
     setRoleName('');
     setRoleDescription('');
     setRoleStatusActive(false);
   };
 
-  const handleEdit = (id: number) => {
-    console.log('Edit:', id);
+  const handleCancelRole = () => {
+    setIsRoleModalOpen(false);
+    setEditingRoleId(null);
+    setRoleName('');
+    setRoleDescription('');
+    setRoleStatusActive(false);
   };
 
-  const handleDelete = (id: number) => {
-    console.log('Delete:', id);
+  const handleEdit = (role: Role) => {
+    setEditingRoleId(role.id);
+    setRoleName(role.name);
+    setRoleDescription(role.description);
+    setRoleStatusActive(role.status === 'Yes');
+    setIsRoleModalOpen(true);
+  };
+
+  const handleDelete = (role: Role) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Role',
+      message: `Are you sure you want to delete role "${role.name}"? This action cannot be undone.`,
+      onConfirm: () => {
+        console.log('Delete:', role.id);
+        setConfirmDialog({ ...confirmDialog, isOpen: false });
+      },
+    });
   };
 
   return (
@@ -164,14 +203,14 @@ const RoleManagement = () => {
                   <td className="px-3 py-3 align-middle">
                     <div className="flex gap-2 items-center justify-center">
                       <button
-                        onClick={() => handleEdit(role.id)}
+                        onClick={() => handleEdit(role)}
                         className="flex items-center justify-center w-9 h-9 bg-blue-500 rounded-full cursor-pointer hover:bg-blue-600 hover:scale-110 hover:shadow-md transition-all p-0 border-none"
                         title="Edit"
                       >
                         <img src={editIcon} alt="Edit" width="16" height="16" className="block brightness-0 invert" />
                       </button>
                       <button
-                        onClick={() => handleDelete(role.id)}
+                        onClick={() => handleDelete(role)}
                         className="flex items-center justify-center w-9 h-9 bg-red-600 rounded-full cursor-pointer hover:bg-red-700 hover:scale-110 transition-all p-0 border-none"
                         title="Delete"
                       >
@@ -184,49 +223,53 @@ const RoleManagement = () => {
             </tbody>
           </table>
         </div>
-        <div className="flex justify-between items-center mt-5 gap-4 flex-wrap">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600 dark:text-gray-400">Items per page:</span>
+        <div className="flex items-center justify-between mt-5 pt-5 border-t border-gray-300 dark:border-gray-600">
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <span>Items per page:</span>
             <select
               value={itemsPerPage}
               onChange={(e) => setItemsPerPage(Number(e.target.value))}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md text-sm focus:outline-none focus:border-blue-500 cursor-pointer"
+              className="px-2 py-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded text-sm focus:outline-none focus:border-blue-500 cursor-pointer"
             >
               <option value="10">10</option>
               <option value="20">20</option>
               <option value="50">50</option>
             </select>
+            <span className="ml-4">Total: 32 items</span>
           </div>
-          <div className="flex gap-2">
-            <button className="flex items-center justify-center w-9 h-9 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 transition-all bg-white dark:bg-gray-700 dark:text-white">
+          <div className="flex items-center gap-2">
+            <button className="w-9 h-9 flex items-center justify-center bg-white dark:bg-gray-700 text-gray-800 dark:text-white border border-gray-300 dark:border-gray-600 rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 transition-all">
               <img src={firstIcon} alt="First" width="16" height="16" />
             </button>
-            <button className="flex items-center justify-center w-9 h-9 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 transition-all bg-white dark:bg-gray-700 dark:text-white">
+            <button className="w-9 h-9 flex items-center justify-center bg-white dark:bg-gray-700 text-gray-800 dark:text-white border border-gray-300 dark:border-gray-600 rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 transition-all">
               <img src={prevIcon} alt="Previous" width="16" height="16" />
             </button>
-            <button className="flex items-center justify-center w-9 h-9 bg-blue-500 dark:bg-blue-600 text-white rounded-md cursor-pointer hover:bg-blue-600 transition-all border-none font-semibold text-sm">
+            <button className="w-9 h-9 flex items-center justify-center bg-blue-500 dark:bg-blue-600 text-white border border-blue-500 rounded cursor-pointer hover:bg-blue-600 transition-all font-semibold text-sm">
               1
             </button>
-            <button className="flex items-center justify-center w-9 h-9 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 transition-all bg-white dark:bg-gray-700 font-semibold text-sm text-gray-800 dark:text-white">
+            <button className="w-9 h-9 flex items-center justify-center bg-white dark:bg-gray-700 text-gray-800 dark:text-white border border-gray-300 dark:border-gray-600 rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 transition-all font-semibold text-sm">
               2
             </button>
-            <button className="flex items-center justify-center w-9 h-9 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 transition-all bg-white dark:bg-gray-700 font-semibold text-sm text-gray-800 dark:text-white">
+            <button className="w-9 h-9 flex items-center justify-center bg-white dark:bg-gray-700 text-gray-800 dark:text-white border border-gray-300 dark:border-gray-600 rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 transition-all font-semibold text-sm">
               3
             </button>
-            <button className="flex items-center justify-center w-9 h-9 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 transition-all bg-white dark:bg-gray-700 dark:text-white">
+            <button className="w-9 h-9 flex items-center justify-center bg-white dark:bg-gray-700 text-gray-800 dark:text-white border border-gray-300 dark:border-gray-600 rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 transition-all">
               <img src={nextIcon} alt="Next" width="16" height="16" />
             </button>
-            <button className="flex items-center justify-center w-9 h-9 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 transition-all bg-white dark:bg-gray-700 dark:text-white">
+            <button className="w-9 h-9 flex items-center justify-center bg-white dark:bg-gray-700 text-gray-800 dark:text-white border border-gray-300 dark:border-gray-600 rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 transition-all">
               <img src={lastIcon} alt="Last" width="16" height="16" />
             </button>
           </div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">1-10 of 32</div>
         </div>
       </div>
 
-      {/* Add Role Form */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm mb-6">
-        <h2 className="text-xl font-bold text-gray-800 mb-5">Add Role</h2>
+      {/* Role Modal */}
+      <Modal
+        isOpen={isRoleModalOpen}
+        onClose={handleCancelRole}
+        title={editingRoleId ? 'Edit Role' : 'Add Role'}
+        size="lg"
+      >
         <form onSubmit={handleSaveRole}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
             <div className="flex flex-col gap-2">
@@ -282,18 +325,32 @@ const RoleManagement = () => {
               className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md text-sm font-semibold cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 transition-all"
             >
               <img src={clearIcon} alt="Cancel" width="16" height="16" />
-              {' '}Cancel
+              {' '}
+              Cancel
             </button>
             <button
               type="submit"
               className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 dark:bg-blue-600 text-white rounded-md text-sm font-semibold cursor-pointer hover:bg-blue-600 dark:hover:bg-blue-700 transition-all"
             >
               <img src={saveIcon} alt="Save" width="16" height="16" />
-              {' '}Save
+              {' '}
+              Save
             </button>
           </div>
         </form>
-      </div>
+      </Modal>
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmButtonClass="bg-red-600 hover:bg-red-700"
+      />
     </div>
   );
 };
