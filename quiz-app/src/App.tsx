@@ -6,10 +6,12 @@ import 'react-toastify/dist/ReactToastify.css';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import MainLayout from './components/layout/MainLayout';
 import ManagementLayout from './components/layout/ManagementLayout';
 import { Home, Quizzes, About, Contact } from './pages';
 import { Login, Register } from './pages/auth';
+import { QuizTaking, QuizResult } from './pages/quiz';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -31,7 +33,7 @@ const UserManagement = lazy(() => import('./pages/management/UserManagement'));
 
 // Loading component
 const LoadingFallback = () => (
-  <div className="flex items-center justify-center min-h-screen">
+  <div className="flex items-center justify-center min-h-screen bg-white dark:bg-gray-900">
     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
   </div>
 );
@@ -63,45 +65,73 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* Management routes with ManagementLayout and lazy loading */}
+        {/* Quiz taking routes - protected */}
+        <Route 
+          path="/quiz/:id" 
+          element={
+            <ProtectedRoute requiredRole="USER">
+              <MainLayout><QuizTaking /></MainLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/quiz/:id/result" 
+          element={
+            <ProtectedRoute requiredRole="USER">
+              <MainLayout><QuizResult /></MainLayout>
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Management routes with ManagementLayout, lazy loading and ADMIN protection */}
         <Route 
           path="/management" 
           element={
-            <Suspense fallback={<LoadingFallback />}>
-              <ManagementLayout><Management /></ManagementLayout>
-            </Suspense>
+            <ProtectedRoute requiredRole="ADMIN">
+              <Suspense fallback={<LoadingFallback />}>
+                <ManagementLayout><Management /></ManagementLayout>
+              </Suspense>
+            </ProtectedRoute>
           } 
         />
         <Route 
           path="/management/quiz" 
           element={
-            <Suspense fallback={<LoadingFallback />}>
-              <ManagementLayout><QuizManagement /></ManagementLayout>
-            </Suspense>
+            <ProtectedRoute requiredRole="ADMIN">
+              <Suspense fallback={<LoadingFallback />}>
+                <ManagementLayout><QuizManagement /></ManagementLayout>
+              </Suspense>
+            </ProtectedRoute>
           } 
         />
         <Route 
           path="/management/question" 
           element={
-            <Suspense fallback={<LoadingFallback />}>
-              <ManagementLayout><QuestionManagement /></ManagementLayout>
-            </Suspense>
+            <ProtectedRoute requiredRole="ADMIN">
+              <Suspense fallback={<LoadingFallback />}>
+                <ManagementLayout><QuestionManagement /></ManagementLayout>
+              </Suspense>
+            </ProtectedRoute>
           } 
         />
         <Route 
           path="/management/user" 
           element={
-            <Suspense fallback={<LoadingFallback />}>
-              <ManagementLayout><UserManagement /></ManagementLayout>
-            </Suspense>
+            <ProtectedRoute requiredRole="ADMIN">
+              <Suspense fallback={<LoadingFallback />}>
+                <ManagementLayout><UserManagement /></ManagementLayout>
+              </Suspense>
+            </ProtectedRoute>
           } 
         />
         <Route 
           path="/management/role" 
           element={
-            <Suspense fallback={<LoadingFallback />}>
-              <ManagementLayout><RoleManagement /></ManagementLayout>
-            </Suspense>
+            <ProtectedRoute requiredRole="ADMIN">
+              <Suspense fallback={<LoadingFallback />}>
+                <ManagementLayout><RoleManagement /></ManagementLayout>
+              </Suspense>
+            </ProtectedRoute>
           } 
         />
       </Routes>

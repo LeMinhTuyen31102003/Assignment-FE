@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthContext } from '@/contexts/useAuthContext';
@@ -18,8 +18,12 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login: loginApi } = useAuth();
   const { login: setAuthUser } = useAuthContext();
+  
+  // Get the return URL from location state or default to home
+  const from = (location.state as { from?: string })?.from || '/';
   
   const {
     register,
@@ -36,7 +40,8 @@ const Login = () => {
       if (result) {
         setAuthUser(result.user);
         toast.success('Login successful!');
-        navigate('/');
+        // Redirect to the page user was trying to access, or home
+        navigate(from, { replace: true });
       } else {
         toast.error('Invalid email or password. Please try again.');
       }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ThemeToggle } from '@/components/common';
 import { useAuthContext } from '@/contexts/useAuthContext';
+import Authorize from '@/components/auth/Authorize';
 import logo from '../../assets/images/home/logo.png';
 import adminAvatar from '../../assets/images/user/admin.png';
 
@@ -48,14 +49,16 @@ const Header = () => {
             >
               Quizzes
             </Link>
-            <Link 
-              to="/management" 
-              className={`font-medium transition-colors ${
-                isActive('/management') ? 'text-blue-500' : 'text-gray-600 dark:text-gray-300 hover:text-blue-500'
-              }`}
-            >
-              Management
-            </Link>
+            <Authorize role="ADMIN">
+              <Link 
+                to="/management" 
+                className={`font-medium transition-colors ${
+                  isActive('/management') ? 'text-blue-500' : 'text-gray-600 dark:text-gray-300 hover:text-blue-500'
+                }`}
+              >
+                Management
+              </Link>
+            </Authorize>
             <Link 
               to="/about" 
               className={`font-medium transition-colors ${

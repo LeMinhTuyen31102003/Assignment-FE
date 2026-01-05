@@ -1,4 +1,12 @@
 import { useState } from 'react';
+import { toast } from 'react-toastify';
+import { 
+  useQuestions, 
+  useCreateQuestion, 
+  useUpdateQuestion, 
+  useDeleteQuestion
+} from '@/hooks/useQuestion';
+import Modal from '@/components/common/Modal';
 import createIcon from '../../assets/images/user-management/Frame_1482_3473.png';
 import clearIcon from '../../assets/images/user-management/Frame_1482_3362.png';
 import searchIcon from '../../assets/images/user-management/Frame_1482_3486.png';
@@ -10,98 +18,263 @@ import prevIcon from '../../assets/images/user-management/Frame_1482_5093.png';
 import nextIcon from '../../assets/images/user-management/Frame_1482_5109.png';
 import lastIcon from '../../assets/images/user-management/Frame_1482_5113.png';
 
-interface Question {
-  id: number;
-  content: string;
-  type: string;
-  answers: number;
-  status: string;
-}
-
 interface Answer {
-  id: number;
+  id?: string;
   content: string;
   isCorrect: boolean;
-  status: string;
+  status?: string;
+}
+
+interface Question {
+  id: string;
+  content: string;
+  type: string;
+  score?: number;
+  order?: number;
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  answers?: Answer[];
 }
 
 const QuestionManagement = () => {
   const [searchName, setSearchName] = useState('');
   const [questionType, setQuestionType] = useState(''); 
-  const [statusActive, setStatusActive] = useState(false);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(0);
 
+  const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
   const [questionContent, setQuestionContent] = useState('');
   const [selectedQuestionType, setSelectedQuestionType] = useState('');
-  const [questionStatusActive, setQuestionStatusActive] = useState(false);
+  const [questionScore, setQuestionScore] = useState<number>(10);
 
+  const [selectedAnswerId, setSelectedAnswerId] = useState<string | null>(null);
   const [answerDescription, setAnswerDescription] = useState('');
   const [isCorrect, setIsCorrect] = useState(false);
-  const [answerStatusActive, setAnswerStatusActive] = useState(false);
 
+  const [answers, setAnswers] = useState<Answer[]>([]);
   const [showAnswers, setShowAnswers] = useState(false);
+  
+  const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
+  const [isAnswerModalOpen, setIsAnswerModalOpen] = useState(false);
 
-  const questions: Question[] = [
-    { id: 1, content: 'Who is the inventor of the airplane?', type: 'MultipleChoice', answers: 4, status: 'Yes' },
-    { id: 2, content: 'Who is the inventor of the World Wide Web?', type: 'MultipleChoice', answers: 4, status: 'Yes' },
-    { id: 3, content: 'Where is Viet Nam?', type: 'MultipleChoice', answers: 4, status: 'Yes' },
-    { id: 4, content: 'What is the capital of France?', type: 'SingleChoice', answers: 4, status: 'Yes' },
-    { id: 5, content: 'Who is the inventor of the alternating current?', type: 'MultipleChoice', answers: 4, status: 'Yes' },
-    { id: 6, content: 'Where is Australia?', type: 'MultipleChoice', answers: 4, status: 'Yes' },
-    { id: 7, content: 'Who is the inventor of the ATM?', type: 'MultipleChoice', answers: 4, status: 'Yes' },
-    { id: 8, content: 'Where is France?', type: 'MultipleChoice', answers: 4, status: 'Yes' },
-    { id: 9, content: 'Where is the United States?', type: 'MultipleChoice', answers: 4, status: 'Yes' },
-    { id: 10, content: 'Who is the inventor of the washing machine?', type: 'MultipleChoice', answers: 4, status: 'Yes' },
-  ];
+  // API hooks
+  const { data: questionsResponse, isLoading, error, refetch } = useQuestions({
+    page: currentPage,
+    size: itemsPerPage,
+    content: searchName || undefined,
+    type: questionType || undefined,
+  });
+  const createQuestion = useCreateQuestion();
+  const updateQuestion = useUpdateQuestion();
+  const deleteQuestion = useDeleteQuestion();
 
-  const answers: Answer[] = [
-    { id: 1, content: 'Wright brothers', isCorrect: true, status: 'Yes' },
-    { id: 2, content: 'Alexander Graham Bell', isCorrect: false, status: 'Yes' },
-    { id: 3, content: 'Albert Einstein', isCorrect: false, status: 'Yes' },
-    { id: 4, content: 'Charles Babbage', isCorrect: false, status: 'Yes' },
-  ];
+  const questions = questionsResponse?.content || [];
+  const totalPages = questionsResponse?.totalPages || 0;
+  const totalElements = questionsResponse?.totalElements || 0;
 
   const handleSearch = () => {
-    console.log('Searching...', { searchName, questionType, statusActive });
+    setCurrentPage(0);
+    refetch();
   };
 
   const handleClear = () => {
     setSearchName('');
     setQuestionType('');
-    setStatusActive(false);
+    setCurrentPage(0);
   };
 
   const handleCreateQuestion = () => {
-    console.log('Creating question...');
+    setSelectedQuestionId(null);
+    setQuestionContent('');
+    setSelectedQuestionType('');
+    setQuestionScore(10);
+    setAnswers([]);
+    setShowAnswers(false);
+    setIsQuestionModalOpen(true);
   };
 
-  const handleSaveQuestion = (e: React.FormEvent) => {
+  const handleSaveQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Saving question...', { questionContent, selectedQuestionType, questionStatusActive });
+    
+    if (!questionContent.trim() || !selectedQuestionType) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      if (selectedQuestionId) {
+        const updateData: {
+          content: string;
+          type: string;
+          score: number;
+          answers?: { content: string; isCorrect: boolean }[];
+        } = {
+          content: questionContent,
+          type: selectedQuestionType,
+          score: questionScore,
+        };
+        
+        if (answers.length > 0) {
+          updateData.answers = answers.map(ans => ({
+            content: ans.content,
+            isCorrect: ans.isCorrect
+          }));
+        }
+        
+        await updateQuestion.mutateAsync({ id: selectedQuestionId, data: updateData });
+        toast.success('Question updated successfully!');
+      } else {
+        const createData: {
+          content: string;
+          type: string;
+          score: number;
+          answers?: { content: string; isCorrect: boolean }[];
+        } = {
+          content: questionContent,
+          type: selectedQuestionType,
+          score: questionScore,
+        };
+        
+        if (answers.length > 0) {
+          createData.answers = answers.map(ans => ({
+            content: ans.content,
+            isCorrect: ans.isCorrect
+          }));
+        }
+        
+        await createQuestion.mutateAsync(createData);
+        toast.success('Question created successfully!');
+      }
+
+      handleCancelQuestion();
+      setIsQuestionModalOpen(false);
+      refetch();
+    } catch (error) {
+      console.error('Save question error:', error);
+      toast.error(`Failed to ${selectedQuestionId ? 'update' : 'create'} question`);
+    }
   };
 
   const handleCancelQuestion = () => {
+    setSelectedQuestionId(null);
     setQuestionContent('');
     setSelectedQuestionType('');
-    setQuestionStatusActive(false);
+    setQuestionScore(10);
+    setAnswers([]);
+    setShowAnswers(false);
+    setIsQuestionModalOpen(false);
+  };
+
+  const handleAddAnswer = () => {
+    setSelectedAnswerId(null);
+    setAnswerDescription('');
+    setIsCorrect(false);
+    setIsAnswerModalOpen(true);
   };
 
   const handleSaveAnswer = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Saving answer...', { answerDescription, isCorrect, answerStatusActive });
+    
+    if (!answerDescription.trim()) {
+      toast.error('Please enter answer content');
+      return;
+    }
+
+    const newAnswer: Answer = {
+      id: selectedAnswerId || Date.now().toString(),
+      content: answerDescription,
+      isCorrect: isCorrect
+    };
+
+    if (selectedAnswerId) {
+      setAnswers(prev => prev.map(ans => ans.id === selectedAnswerId ? newAnswer : ans));
+      toast.success('Answer updated!');
+    } else {
+      setAnswers(prev => [...prev, newAnswer]);
+      toast.success('Answer added!');
+    }
+
+    setSelectedAnswerId(null);
+    setAnswerDescription('');
+    setIsCorrect(false);
+    setIsAnswerModalOpen(false);
   };
 
-  const handleEdit = (id: number) => {
-    console.log('Edit:', id);
+  const handleCancelAnswer = () => {
+    setSelectedAnswerId(null);
+    setAnswerDescription('');
+    setIsCorrect(false);
+    setIsAnswerModalOpen(false);
   };
 
-  const handleDelete = (id: number) => {
-    console.log('Delete:', id);
+  const handleEditQuestion = (question: Question) => {
+    setSelectedQuestionId(question.id);
+    setQuestionContent(question.content);
+    setSelectedQuestionType(question.type);
+    setQuestionScore(question.score || 10);
+    setAnswers(question.answers || []);
+    setShowAnswers(!!(question.answers && question.answers.length > 0));
+    setIsQuestionModalOpen(true);
+  };
+
+  const handleEditAnswer = (answer: Answer) => {
+    setSelectedAnswerId(answer.id || null);
+    setAnswerDescription(answer.content);
+    setIsCorrect(answer.isCorrect);
+    setIsAnswerModalOpen(true);
+  };
+
+  const handleDeleteQuestion = async (id: string) => {
+    if (!globalThis.confirm('Are you sure you want to delete this question?')) {
+      return;
+    }
+
+    try {
+      await deleteQuestion.mutateAsync(id);
+      toast.success('Question deleted successfully!');
+      refetch();
+    } catch (error) {
+      console.error('Delete question error:', error);
+      toast.error('Failed to delete question');
+    }
+  };
+
+  const handleDeleteAnswer = (id: string) => {
+    if (!globalThis.confirm('Are you sure you want to delete this answer?')) {
+      return;
+    }
+    setAnswers(prev => prev.filter(ans => ans.id !== id));
+    toast.success('Answer removed!');
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+  };
+
+  const handleItemsPerPageChange = (newSize: number) => {
+    setItemsPerPage(newSize);
+    setCurrentPage(0);
   };
 
   return (
     <div>
       <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-6">Question Management</h1>
+
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 text-red-800 dark:text-red-300 px-4 py-3 rounded-lg mb-6">
+          <p className="font-semibold">Error loading questions</p>
+          <p className="text-sm">{error instanceof Error ? error.message : 'An error occurred'}</p>
+        </div>
+      )}
 
       {/* Search Section */}
       <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm mb-6">
@@ -127,29 +300,10 @@ const QuestionManagement = () => {
                 className="px-3.5 py-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md text-sm focus:outline-none focus:border-blue-500 transition-colors"
               >
                 <option value="">Select item</option>
-                <option value="MultipleChoice">MultipleChoice</option>
-                <option value="SingleChoice">SingleChoice</option>
-                <option value="TrueFalse">TrueFalse</option>
+                <option value="SINGLE_CHOICE">Single Choice</option>
+                <option value="MULTIPLE_CHOICE">Multiple Choice</option>
               </select>
             </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
-            <div className="flex flex-col gap-2">
-              <label htmlFor="statusActive" className="text-sm font-semibold text-gray-800 dark:text-white">Status</label>
-              <div className="flex items-center gap-2 px-3.5 py-2.5 min-h-[42px]">
-                <input
-                  type="checkbox"
-                  id="statusActive"
-                  checked={statusActive}
-                  onChange={(e) => setStatusActive(e.target.checked)}
-                  className="w-4.5 h-4.5 cursor-pointer"
-                />
-                <label htmlFor="statusActive" className="text-sm text-gray-600 dark:text-gray-300 cursor-pointer">
-                  Active
-                </label>
-              </div>
-            </div>
-            <div className="flex flex-col gap-2"></div>
           </div>
           <div className="flex justify-between items-center">
             <button
@@ -193,10 +347,10 @@ const QuestionManagement = () => {
                   Type
                 </th>
                 <th className="px-3 py-3 text-left text-sm font-semibold text-gray-800 dark:text-white border-b-2 border-gray-300 dark:border-gray-600 align-middle">
-                  Answers
+                  Score
                 </th>
                 <th className="px-3 py-3 text-left text-sm font-semibold text-gray-800 dark:text-white border-b-2 border-gray-300 dark:border-gray-600 align-middle">
-                  Status
+                  Answers
                 </th>
                 <th className="px-3 py-3 text-left text-sm font-semibold text-gray-800 dark:text-white border-b-2 border-gray-300 dark:border-gray-600 align-middle">
                   Action
@@ -204,32 +358,47 @@ const QuestionManagement = () => {
               </tr>
             </thead>
             <tbody>
-              {questions.map((question) => (
-                <tr key={question.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{question.content}</td>
-                  <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{question.type}</td>
-                  <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{question.answers}</td>
-                  <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{question.status}</td>
-                  <td className="px-3 py-3 align-middle">
-                    <div className="flex gap-2 items-center justify-center">
-                      <button
-                        onClick={() => handleEdit(question.id)}
-                        className="flex items-center justify-center w-9 h-9 bg-blue-500 rounded-full cursor-pointer hover:bg-blue-600 hover:scale-110 hover:shadow-md transition-all p-0 border-none"
-                        title="Edit"
-                      >
-                        <img src={editIcon} alt="Edit" width="16" height="16" className="block brightness-0 invert" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(question.id)}
-                        className="flex items-center justify-center w-9 h-9 bg-red-600 rounded-full cursor-pointer hover:bg-red-700 hover:scale-110 transition-all p-0 border-none"
-                        title="Delete"
-                      >
-                        <img src={deleteIcon} alt="Delete" width="16" height="16" className="block brightness-0 invert" />
-                      </button>
-                    </div>
+              {questions.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-3 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                    {isLoading ? 'Loading questions...' : 'No questions found'}
                   </td>
                 </tr>
-              ))}
+              ) : (
+                questions.map((question) => (
+                  <tr key={question.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{question.content}</td>
+                    <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">
+                      {question.type.replaceAll('_', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')}
+                    </td>
+                    <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">
+                      <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                        {question.score || 0}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{question.answers?.length || 0}</td>
+                    <td className="px-3 py-3 align-middle">
+                      <div className="flex gap-2 items-center justify-center">
+                        <button
+                          onClick={() => handleEditQuestion(question)}
+                          className="flex items-center justify-center w-9 h-9 bg-blue-500 rounded-full cursor-pointer hover:bg-blue-600 hover:scale-110 hover:shadow-md transition-all p-0 border-none"
+                          title="Edit"
+                        >
+                          <img src={editIcon} alt="Edit" width="16" height="16" className="block brightness-0 invert" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteQuestion(question.id)}
+                          disabled={deleteQuestion.isPending}
+                          className="flex items-center justify-center w-9 h-9 bg-red-600 rounded-full cursor-pointer hover:bg-red-700 hover:scale-110 transition-all p-0 border-none disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Delete"
+                        >
+                          <img src={deleteIcon} alt="Delete" width="16" height="16" className="block brightness-0 invert" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -238,44 +407,84 @@ const QuestionManagement = () => {
             <span>Items per page:</span>
             <select
               value={itemsPerPage}
-              onChange={(e) => setItemsPerPage(Number(e.target.value))}
+              onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
               className="px-2 py-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded text-sm cursor-pointer focus:outline-none focus:border-blue-500"
             >
               <option value="10">10</option>
               <option value="20">20</option>
               <option value="50">50</option>
             </select>
+            <span className="ml-4">Total: {totalElements} items</span>
           </div>
           <div className="flex items-center gap-2">
-            <button className="w-9 h-9 flex items-center justify-center bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 dark:text-white transition-all">
+            <button 
+              onClick={() => handlePageChange(0)}
+              disabled={currentPage === 0}
+              className="w-9 h-9 flex items-center justify-center bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 dark:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <img src={firstIcon} alt="First" width="16" height="16" />
             </button>
-            <button className="w-9 h-9 flex items-center justify-center bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 dark:text-white transition-all">
+            <button 
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 0}
+              className="w-9 h-9 flex items-center justify-center bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 dark:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <img src={prevIcon} alt="Previous" width="16" height="16" />
             </button>
-            <button className="w-9 h-9 flex items-center justify-center bg-blue-500 dark:bg-blue-600 text-white border border-blue-500 rounded text-sm font-semibold cursor-pointer">
-              1
-            </button>
-            <button className="w-9 h-9 flex items-center justify-center bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 dark:text-white transition-all">
-              2
-            </button>
-            <button className="w-9 h-9 flex items-center justify-center bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 dark:text-white transition-all">
-              3
-            </button>
-            <button className="w-9 h-9 flex items-center justify-center bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 dark:text-white transition-all">
+            
+            {/* Page numbers */}
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let pageNum;
+              if (totalPages <= 5) {
+                pageNum = i;
+              } else if (currentPage < 3) {
+                pageNum = i;
+              } else if (currentPage > totalPages - 4) {
+                pageNum = totalPages - 5 + i;
+              } else {
+                pageNum = currentPage - 2 + i;
+              }
+              
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => handlePageChange(pageNum)}
+                  className={`w-9 h-9 flex items-center justify-center border rounded text-sm font-semibold cursor-pointer transition-all ${
+                    currentPage === pageNum
+                      ? 'bg-blue-500 dark:bg-blue-600 text-white border-blue-500'
+                      : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 dark:text-white'
+                  }`}
+                >
+                  {pageNum + 1}
+                </button>
+              );
+            })}
+            
+            <button 
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage >= totalPages - 1}
+              className="w-9 h-9 flex items-center justify-center bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 dark:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <img src={nextIcon} alt="Next" width="16" height="16" />
             </button>
-            <button className="w-9 h-9 flex items-center justify-center bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 dark:text-white transition-all">
+            <button 
+              onClick={() => handlePageChange(totalPages - 1)}
+              disabled={currentPage >= totalPages - 1}
+              className="w-9 h-9 flex items-center justify-center bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 dark:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <img src={lastIcon} alt="Last" width="16" height="16" />
             </button>
           </div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">1-10 of 32</div>
         </div>
       </div>
 
-      {/* Add Question Form */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm mb-6">
-        <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-5">Add Question</h2>
+      {/* Question Modal */}
+      <Modal
+        isOpen={isQuestionModalOpen}
+        onClose={handleCancelQuestion}
+        title={selectedQuestionId ? 'Edit Question' : 'Add Question'}
+        size="lg"
+      >
         <form onSubmit={handleSaveQuestion}>
           <div className="flex flex-col gap-2 mb-5">
             <label htmlFor="questionContent" className="text-sm font-semibold text-gray-800 dark:text-white">Content</label>
@@ -300,25 +509,22 @@ const QuestionManagement = () => {
                 className="px-3.5 py-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md text-sm focus:outline-none focus:border-blue-500 transition-colors"
               >
                 <option value="">Select Question Type</option>
-                <option value="MultipleChoice">MultipleChoice</option>
-                <option value="SingleChoice">SingleChoice</option>
-                <option value="TrueFalse">TrueFalse</option>
+                <option value="SINGLE_CHOICE">Single Choice</option>
+                <option value="MULTIPLE_CHOICE">Multiple Choice</option>
               </select>
             </div>
             <div className="flex flex-col gap-2">
-              <label htmlFor="questionStatusActive" className="text-sm font-semibold text-gray-800 dark:text-white">Status</label>
-              <div className="flex items-center gap-2 px-3.5 py-2.5 min-h-[42px]">
-                <input
-                  type="checkbox"
-                  id="questionStatusActive"
-                  checked={questionStatusActive}
-                  onChange={(e) => setQuestionStatusActive(e.target.checked)}
-                  className="w-4.5 h-4.5 cursor-pointer"
-                />
-                <label htmlFor="questionStatusActive" className="text-sm text-gray-600 dark:text-gray-300 cursor-pointer">
-                  Active
-                </label>
-              </div>
+              <label htmlFor="questionScore" className="text-sm font-semibold text-gray-800 dark:text-white">Score</label>
+              <input
+                id="questionScore"
+                type="number"
+                min="1"
+                max="100"
+                required
+                value={questionScore}
+                onChange={(e) => setQuestionScore(Number(e.target.value))}
+                className="px-3.5 py-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md text-sm focus:outline-none focus:border-blue-500 transition-colors"
+              />
             </div>
           </div>
           <div className="flex justify-between items-center">
@@ -341,21 +547,18 @@ const QuestionManagement = () => {
               </button>
               <button
                 type="submit"
-                className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 dark:bg-blue-600 text-white rounded-md text-sm font-semibold cursor-pointer hover:bg-blue-600 dark:hover:bg-blue-700 transition-all"
+                disabled={createQuestion.isPending || updateQuestion.isPending}
+                className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 dark:bg-blue-600 text-white rounded-md text-sm font-semibold cursor-pointer hover:bg-blue-600 dark:hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <img src={saveIcon} alt="Save" width="16" height="16" />
                 {' '}Save
               </button>
             </div>
           </div>
-        </form>
-      </div>
 
-      {/* Answer List Table */}
-      {showAnswers && (
-        <>
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm mb-6">
-            <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-5">Answer List</h2>
+          {showAnswers && (
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">Answer List</h3>
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
                 <thead className="bg-gray-50 dark:bg-gray-700">
@@ -367,45 +570,50 @@ const QuestionManagement = () => {
                       Is Correct
                     </th>
                     <th className="px-3 py-3 text-left text-sm font-semibold text-gray-800 dark:text-white border-b-2 border-gray-300 dark:border-gray-600 align-middle">
-                      Status
-                    </th>
-                    <th className="px-3 py-3 text-left text-sm font-semibold text-gray-800 dark:text-white border-b-2 border-gray-300 dark:border-gray-600 align-middle">
                       Action
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {answers.map((answer) => (
-                    <tr key={answer.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{answer.content}</td>
-                      <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{answer.isCorrect ? 'True' : 'False'}</td>
-                      <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{answer.status}</td>
-                      <td className="px-3 py-3 align-middle">
-                        <div className="flex gap-2 items-center justify-center">
-                          <button
-                            onClick={() => handleEdit(answer.id)}
-                            className="flex items-center justify-center w-9 h-9 bg-blue-500 rounded-full cursor-pointer hover:bg-blue-600 hover:scale-110 hover:shadow-md transition-all p-0 border-none"
-                            title="Edit"
-                          >
-                            <img src={editIcon} alt="Edit" width="16" height="16" className="block brightness-0 invert" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(answer.id)}
-                            className="flex items-center justify-center w-9 h-9 bg-red-600 rounded-full cursor-pointer hover:bg-red-700 hover:scale-110 transition-all p-0 border-none"
-                            title="Delete"
-                          >
-                            <img src={deleteIcon} alt="Delete" width="16" height="16" className="block brightness-0 invert" />
-                          </button>
-                        </div>
+                  {answers.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="px-3 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                        No answers added yet
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    answers.map((answer) => (
+                      <tr key={answer.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{answer.content}</td>
+                        <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{answer.isCorrect ? 'True' : 'False'}</td>
+                        <td className="px-3 py-3 align-middle">
+                          <div className="flex gap-2 items-center justify-center">
+                            <button
+                              onClick={() => handleEditAnswer(answer)}
+                              className="flex items-center justify-center w-9 h-9 bg-blue-500 rounded-full cursor-pointer hover:bg-blue-600 hover:scale-110 hover:shadow-md transition-all p-0 border-none"
+                              title="Edit"
+                            >
+                              <img src={editIcon} alt="Edit" width="16" height="16" className="block brightness-0 invert" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteAnswer(answer.id || '')}
+                              className="flex items-center justify-center w-9 h-9 bg-red-600 rounded-full cursor-pointer hover:bg-red-700 hover:scale-110 transition-all p-0 border-none"
+                              title="Delete"
+                            >
+                              <img src={deleteIcon} alt="Delete" width="16" height="16" className="block brightness-0 invert" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
             <div className="flex justify-between items-center mt-5">
               <button
                 type="button"
+                onClick={handleAddAnswer}
                 className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 dark:bg-blue-600 text-white rounded-md text-sm font-semibold cursor-pointer hover:bg-blue-600 dark:hover:bg-blue-700 hover:-translate-y-0.5 hover:shadow-lg transition-all"
               >
                 <img src={createIcon} alt="Add" width="16" height="16" />
@@ -413,11 +621,18 @@ const QuestionManagement = () => {
               </button>
             </div>
           </div>
+          )}
+        </form>
+      </Modal>
 
-          {/* Add Answer Form */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm mb-6">
-            <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-5">Add Answer</h2>
-            <form onSubmit={handleSaveAnswer}>
+      {/* Answer Modal */}
+      <Modal
+        isOpen={isAnswerModalOpen}
+        onClose={handleCancelAnswer}
+        title={selectedAnswerId ? 'Edit Answer' : 'Add Answer'}
+        size="md"
+      >
+        <form onSubmit={handleSaveAnswer}>
               <div className="flex flex-col gap-2 mb-5">
                 <label htmlFor="answerDescription" className="text-sm font-semibold text-gray-800 dark:text-white">Description</label>
                 <textarea
@@ -430,41 +645,25 @@ const QuestionManagement = () => {
                   className="px-3.5 py-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md text-sm focus:outline-none focus:border-blue-500 transition-colors"
                 />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="isCorrect" className="text-sm font-semibold text-gray-800 dark:text-white">Is Correct?</label>
-                  <div className="flex items-center gap-2 px-3.5 py-2.5 min-h-[42px]">
-                    <input
-                      type="checkbox"
-                      id="isCorrect"
-                      checked={isCorrect}
-                      onChange={(e) => setIsCorrect(e.target.checked)}
-                      className="w-4.5 h-4.5 cursor-pointer"
-                    />
-                    <label htmlFor="isCorrect" className="text-sm text-gray-600 dark:text-gray-300 cursor-pointer">
-                      Correct
-                    </label>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="answerStatusActive" className="text-sm font-semibold text-gray-800 dark:text-white">Status</label>
-                  <div className="flex items-center gap-2 px-3.5 py-2.5 min-h-[42px]">
-                    <input
-                      type="checkbox"
-                      id="answerStatusActive"
-                      checked={answerStatusActive}
-                      onChange={(e) => setAnswerStatusActive(e.target.checked)}
-                      className="w-4.5 h-4.5 cursor-pointer"
-                    />
-                    <label htmlFor="answerStatusActive" className="text-sm text-gray-600 dark:text-gray-300 cursor-pointer">
-                      Active
-                    </label>
-                  </div>
+              <div className="flex flex-col gap-2 mb-5">
+                <label htmlFor="isCorrect" className="text-sm font-semibold text-gray-800 dark:text-white">Is Correct?</label>
+                <div className="flex items-center gap-2 px-3.5 py-2.5 min-h-[42px]">
+                  <input
+                    type="checkbox"
+                    id="isCorrect"
+                    checked={isCorrect}
+                    onChange={(e) => setIsCorrect(e.target.checked)}
+                    className="w-4.5 h-4.5 cursor-pointer"
+                  />
+                  <label htmlFor="isCorrect" className="text-sm text-gray-600 dark:text-gray-300 cursor-pointer">
+                    Correct
+                  </label>
                 </div>
               </div>
               <div className="flex justify-end gap-3">
                 <button
                   type="button"
+                  onClick={handleCancelAnswer}
                   className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md text-sm font-semibold cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 transition-all"
                 >
                   <img src={clearIcon} alt="Cancel" width="16" height="16" />
@@ -479,9 +678,7 @@ const QuestionManagement = () => {
                 </button>
               </div>
             </form>
-          </div>
-        </>
-      )}
+          </Modal>
     </div>
   );
 };

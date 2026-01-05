@@ -47,7 +47,7 @@ const Contact = () => {
   };
 
   return (
-    <section className="pt-16 pb-16 bg-white dark:bg-gray-900 min-h-[calc(100vh-400px)]">
+    <section className="min-h-screen bg-white dark:bg-gray-900 pt-16 pb-16">
       <div className="max-w-7xl mx-auto px-5">
         <h1 className="text-center text-4xl font-bold text-gray-800 dark:text-white mb-16 tracking-widest">CONTACT</h1>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 bg-white dark:bg-gray-800 p-16 rounded-xl shadow-lg">
@@ -59,7 +59,7 @@ const Contact = () => {
             </p>
             
             {showSuccess && (
-              <div className="bg-green-100 text-green-800 p-4 rounded-md mb-5 border border-green-300 animate-[fadeIn_0.3s]">
+              <div className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 p-4 rounded-md mb-5 border border-green-300 dark:border-green-700 animate-[fadeIn_0.3s]">
                 Message sent successfully!
               </div>
             )}

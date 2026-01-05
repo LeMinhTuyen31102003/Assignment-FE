@@ -45,13 +45,14 @@ interface PaginatedResponse<T> {
 }
 
 // Fetch all quizzes
-export function useQuizzes() {
+export function useQuizzes(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['quizzes'],
     queryFn: async () => {
       const response = await apiClient.get<PaginatedResponse<Quiz>>('/quizzes');
       return response.data.content; // Return only the content array
     },
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -120,6 +121,37 @@ export function useDeleteQuiz() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quizzes'] });
+    },
+  });
+}
+
+// Add question to quiz
+export function useAddQuestionToQuiz() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ quizId, questionId }: { quizId: string; questionId: string }) => {
+      const response = await apiClient.post(`/quizzes/${quizId}/questions/${questionId}`);
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['quiz', variables.quizId] });
+      queryClient.invalidateQueries({ queryKey: ['quiz-questions', variables.quizId] });
+    },
+  });
+}
+
+// Remove question from quiz
+export function useRemoveQuestionFromQuiz() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ quizId, questionId }: { quizId: string; questionId: string }) => {
+      await apiClient.delete(`/quizzes/${quizId}/questions/${questionId}`);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['quiz', variables.quizId] });
+      queryClient.invalidateQueries({ queryKey: ['quiz-questions', variables.quizId] });
     },
   });
 }

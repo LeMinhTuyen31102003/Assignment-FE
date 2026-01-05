@@ -12,9 +12,27 @@ const apiClient = axios.create({
   },
 });
 
+// Public endpoints that don't require authentication
+const publicEndpoints = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/refresh',
+];
+
+// Check if the URL is a public endpoint
+const isPublicEndpoint = (url?: string): boolean => {
+  if (!url) return false;
+  return publicEndpoints.some(endpoint => url.includes(endpoint));
+};
+
 // Request interceptor
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    // Skip adding token for public endpoints
+    if (isPublicEndpoint(config.url)) {
+      return config;
+    }
+    
     // Get token from localStorage
     const token = localStorage.getItem('accessToken');
     

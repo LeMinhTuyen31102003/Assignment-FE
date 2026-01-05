@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import quiz1 from '../../assets/images/home/quiz1.png';
-import quiz2 from '../../assets/images/home/quiz2.png';
-import quiz3 from '../../assets/images/home/quiz3.png';
 import createIcon from '../../assets/images/user-management/Frame_1482_3473.png';
 import clearIcon from '../../assets/images/user-management/Frame_1482_3362.png';
 import searchIcon from '../../assets/images/user-management/Frame_1482_3486.png';
@@ -12,87 +11,57 @@ import firstIcon from '../../assets/images/user-management/Frame_1482_5089.png';
 import prevIcon from '../../assets/images/user-management/Frame_1482_5093.png';
 import nextIcon from '../../assets/images/user-management/Frame_1482_5109.png';
 import lastIcon from '../../assets/images/user-management/Frame_1482_5113.png';
-
-interface Quiz {
-  id: number;
-  thumbnail: string;
-  title: string;
-  description: string;
-  duration: string;
-  questionsCount: number;
-  status: string;
-}
-
-interface QuizQuestion {
-  id: number;
-  content: string;
-  type: string;
-  answers: number;
-  order: number;
-  status: string;
-}
+import {
+  useQuizzes,
+  useCreateQuiz,
+  useUpdateQuiz,
+  useDeleteQuiz,
+  useAddQuestionToQuiz,
+  useRemoveQuestionFromQuiz,
+} from '@/hooks/useQuiz';
+import { useQuestions } from '@/hooks/useQuestion';
 
 const QuizManagement = () => {
   const [searchName, setSearchName] = useState('');
   const [statusActive, setStatusActive] = useState(false);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
+  const [editingQuizId, setEditingQuizId] = useState<string | null>(null);
   const [quizTitle, setQuizTitle] = useState('');
   const [quizDescription, setQuizDescription] = useState('');
   const [quizDuration, setQuizDuration] = useState('');
   const [quizThumbnail, setQuizThumbnail] = useState('');
   const [quizStatusActive, setQuizStatusActive] = useState(false);
+  const [selectedQuizForQuestions, setSelectedQuizForQuestions] = useState<string | null>(null);
 
   const [selectedQuestion, setSelectedQuestion] = useState('');
   const [questionOrder, setQuestionOrder] = useState('');
 
   const [showQuestions, setShowQuestions] = useState(false);
 
-  const quizzes: Quiz[] = [
-    {
-      id: 1,
-      thumbnail: quiz1,
-      title: 'Capitals of Country',
-      description: 'Test your knowledge of country capitals',
-      duration: '15m',
-      questionsCount: 7,
-      status: 'Yes',
-    },
-    {
-      id: 2,
-      thumbnail: quiz2,
-      title: 'Inventors and Inventions',
-      description: 'Test your knowledge of inventors and their inventions',
-      duration: '20m',
-      questionsCount: 10,
-      status: 'Yes',
-    },
-    {
-      id: 3,
-      thumbnail: quiz3,
-      title: 'Countries of the World',
-      description: 'Test your knowledge of countries',
-      duration: '15m',
-      questionsCount: 10,
-      status: 'Yes',
-    },
-  ];
+  // API Hooks
+  const { data: quizzes = [], isLoading: isLoadingQuizzes, error: quizzesError } = useQuizzes();
+  const { data: questionsResponse, isLoading: isLoadingQuestions } = useQuestions();
+  const allQuestions = questionsResponse?.content || [];
+  const createQuizMutation = useCreateQuiz();
+  const updateQuizMutation = useUpdateQuiz();
+  const deleteQuizMutation = useDeleteQuiz();
+  const addQuestionMutation = useAddQuestionToQuiz();
+  const removeQuestionMutation = useRemoveQuestionFromQuiz();
 
-  const quizQuestions: QuizQuestion[] = [
-    { id: 1, content: 'Who is the inventor of the airplane?', type: 'MultipleChoice', answers: 4, order: 1, status: 'Yes' },
-    { id: 2, content: 'Who is the inventor of the World Wide Web?', type: 'MultipleChoice', answers: 4, order: 2, status: 'Yes' },
-    { id: 3, content: 'Where is Viet Nam?', type: 'MultipleChoice', answers: 4, order: 3, status: 'Yes' },
-    { id: 4, content: 'What is the capital of France?', type: 'SingleChoice', answers: 4, order: 4, status: 'Yes' },
-    { id: 5, content: 'Who is the inventor of the alternating current?', type: 'MultipleChoice', answers: 4, order: 5, status: 'Yes' },
-    { id: 6, content: 'Where is Australia?', type: 'MultipleChoice', answers: 4, order: 6, status: 'Yes' },
-    { id: 7, content: 'Who is the inventor of the ATM?', type: 'MultipleChoice', answers: 4, order: 7, status: 'Yes' },
-    { id: 8, content: 'Where is France?', type: 'MultipleChoice', answers: 4, order: 8, status: 'Yes' },
-    { id: 9, content: 'Where is the United States?', type: 'MultipleChoice', answers: 4, order: 9, status: 'Yes' },
-    { id: 10, content: 'Who is the inventor of the washing machine?', type: 'MultipleChoice', answers: 4, order: 10, status: 'Yes' },
-  ];
+  // Get questions for selected quiz
+  const selectedQuiz = quizzes.find(q => q.id === selectedQuizForQuestions);
+  const quizQuestions = selectedQuiz?.questions || [];
+
+  useEffect(() => {
+    if (quizzesError) {
+      toast.error('Failed to load quizzes');
+    }
+  }, [quizzesError]);
 
   const handleSearch = () => {
     console.log('Searching...', { searchName, statusActive });
+    // TODO: Implement search/filter logic with API
   };
 
   const handleClear = () => {
@@ -101,42 +70,154 @@ const QuizManagement = () => {
   };
 
   const handleCreate = () => {
-    console.log('Creating quiz...');
-  };
-
-  const handleSaveQuiz = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Saving quiz...', { quizTitle, quizDescription, quizDuration, quizThumbnail, quizStatusActive });
-  };
-
-  const handleCancelQuiz = () => {
+    setEditingQuizId(null);
     setQuizTitle('');
     setQuizDescription('');
     setQuizDuration('');
     setQuizThumbnail('');
     setQuizStatusActive(false);
+    setSelectedQuizForQuestions(null);
+    setShowQuestions(false);
   };
 
-  const handleAddQuestionToQuiz = (e: React.FormEvent) => {
+  const handleSaveQuiz = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Adding question to quiz...', { selectedQuestion, questionOrder });
+
+    const durationMinutes = Number.parseInt(quizDuration, 10);
+    if (Number.isNaN(durationMinutes) || durationMinutes <= 0) {
+      toast.error('Please enter a valid duration in minutes');
+      return;
+    }
+
+    const quizData = {
+      title: quizTitle,
+      description: quizDescription,
+      durationMinutes,
+      thumbnail: quizThumbnail || undefined,
+    };
+
+    try {
+      if (editingQuizId) {
+        await updateQuizMutation.mutateAsync({
+          id: editingQuizId,
+          data: quizData,
+        });
+        toast.success('Quiz updated successfully');
+      } else {
+        const newQuiz = await createQuizMutation.mutateAsync(quizData);
+        toast.success('Quiz created successfully');
+        setSelectedQuizForQuestions(newQuiz.id);
+      }
+      
+      // Don't clear form if showing questions section
+      if (!showQuestions) {
+        handleCancelQuiz();
+      }
+    } catch (error) {
+      console.error('Error saving quiz:', error);
+      toast.error(editingQuizId ? 'Failed to update quiz' : 'Failed to create quiz');
+    }
   };
 
-  const handleEdit = (id: number) => {
-    console.log('Edit:', id);
+  const handleCancelQuiz = () => {
+    setEditingQuizId(null);
+    setQuizTitle('');
+    setQuizDescription('');
+    setQuizDuration('');
+    setQuizThumbnail('');
+    setQuizStatusActive(false);
+    setSelectedQuizForQuestions(null);
+    setShowQuestions(false);
   };
 
-  const handleDelete = (id: number) => {
-    console.log('Delete:', id);
+  const handleAddQuestionToQuiz = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!selectedQuizForQuestions) {
+      toast.error('Please save the quiz first');
+      return;
+    }
+
+    if (!selectedQuestion) {
+      toast.error('Please select a question');
+      return;
+    }
+
+    try {
+      await addQuestionMutation.mutateAsync({
+        quizId: selectedQuizForQuestions,
+        questionId: selectedQuestion,
+      });
+      toast.success('Question added to quiz successfully');
+      setSelectedQuestion('');
+      setQuestionOrder('');
+    } catch (error) {
+      console.error('Error adding question to quiz:', error);
+      toast.error('Failed to add question to quiz');
+    }
+  };
+
+  const handleEdit = (id: string) => {
+    const quiz = quizzes.find(q => q.id === id);
+    if (quiz) {
+      setEditingQuizId(quiz.id);
+      setQuizTitle(quiz.title);
+      setQuizDescription(quiz.description);
+      setQuizDuration(quiz.durationMinutes.toString());
+      setQuizThumbnail(quiz.thumbnail || '');
+      setQuizStatusActive(true);
+      setSelectedQuizForQuestions(quiz.id);
+      setShowQuestions(true);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (globalThis.confirm('Are you sure you want to delete this quiz?')) {
+      try {
+        await deleteQuizMutation.mutateAsync(id);
+        toast.success('Quiz deleted successfully');
+      } catch (error) {
+        console.error('Error deleting quiz:', error);
+        toast.error('Failed to delete quiz');
+      }
+    }
+  };
+
+  const handleDeleteQuestion = async (questionId: string) => {
+    if (!selectedQuizForQuestions) return;
+
+    if (globalThis.confirm('Are you sure you want to remove this question from the quiz?')) {
+      try {
+        await removeQuestionMutation.mutateAsync({
+          quizId: selectedQuizForQuestions,
+          questionId,
+        });
+        toast.success('Question removed from quiz successfully');
+      } catch (error) {
+        console.error('Error removing question:', error);
+        toast.error('Failed to remove question from quiz');
+      }
+    }
   };
 
   const handleSaveQuestions = () => {
-    console.log('Saving all questions...');
+    toast.success('Questions saved successfully');
   };
 
   const handleAddQuestion = () => {
-    console.log('Adding new question...');
+    // Navigate to question management or open a modal
+    console.log('Navigate to add new question');
+    toast.info('Please use Question Management to create new questions');
   };
+
+  // Loading state
+  if (isLoadingQuizzes) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -242,13 +323,23 @@ const QuizManagement = () => {
               {quizzes.map((quiz) => (
                 <tr key={quiz.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-3 py-3 align-middle">
-                    <img src={quiz.thumbnail} alt="Quiz" width="80" height="60" className="rounded-md" />
+                    <img 
+                      src={quiz.thumbnail || quiz1} 
+                      alt="Quiz" 
+                      width="80" 
+                      height="60" 
+                      className="rounded-md"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = quiz1;
+                      }}
+                    />
                   </td>
                   <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{quiz.title}</td>
                   <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{quiz.description}</td>
-                  <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{quiz.duration}</td>
-                  <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{quiz.questionsCount}</td>
-                  <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{quiz.status}</td>
+                  <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{quiz.durationMinutes}m</td>
+                  <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{quiz.totalQuestions || quiz.questions?.length || 0}</td>
+                  <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">Yes</td>
                   <td className="px-3 py-3 align-middle">
                     <div className="flex gap-2 items-center justify-center">
                       <button
@@ -412,10 +503,12 @@ const QuizManagement = () => {
               </button>
               <button
                 type="submit"
-                className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 dark:bg-blue-600 text-white rounded-md text-sm font-semibold cursor-pointer hover:bg-blue-600 dark:hover:bg-blue-700 transition-all"
+                disabled={createQuizMutation.isPending || updateQuizMutation.isPending}
+                className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 dark:bg-blue-600 text-white rounded-md text-sm font-semibold cursor-pointer hover:bg-blue-600 dark:hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <img src={saveIcon} alt="Save" width="16" height="16" />
-                {' '}Save
+                {' '}
+                {createQuizMutation.isPending || updateQuizMutation.isPending ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
@@ -456,14 +549,15 @@ const QuizManagement = () => {
                     <tr key={question.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{question.content}</td>
                       <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{question.type}</td>
-                      <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{question.answers}</td>
-                      <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{question.order}</td>
-                      <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{question.status}</td>
+                      <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{question.answers?.length || 0}</td>
+                      <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{question.order || '-'}</td>
+                      <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 align-middle">{question.status || 'Active'}</td>
                       <td className="px-3 py-3 align-middle">
                         <div className="flex gap-2 items-center justify-center">
                           <button
-                            onClick={() => handleDelete(question.id)}
-                            className="flex items-center justify-center w-9 h-9 bg-red-600 rounded-full cursor-pointer hover:bg-red-700 hover:scale-110 transition-all p-0 border-none"
+                            onClick={() => handleDeleteQuestion(question.id)}
+                            disabled={removeQuestionMutation.isPending}
+                            className="flex items-center justify-center w-9 h-9 bg-red-600 rounded-full cursor-pointer hover:bg-red-700 hover:scale-110 transition-all p-0 border-none disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Delete"
                           >
                             <img src={deleteIcon} alt="Delete" width="16" height="16" className="block brightness-0 invert" />
@@ -497,24 +591,33 @@ const QuizManagement = () => {
 
           {/* Add Question to Quiz Section */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm mb-6">
-            <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-5">Add Quiz</h2>
+            <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-5">Add Question to Quiz</h2>
             <form onSubmit={handleAddQuestionToQuiz}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
                 <div className="flex flex-col gap-2">
                   <label htmlFor="selectedQuestion" className="text-sm font-semibold text-gray-800 dark:text-white">
                     Question
                   </label>
-                  <select
-                    id="selectedQuestion"
-                    value={selectedQuestion}
-                    onChange={(e) => setSelectedQuestion(e.target.value)}
-                    className="px-3.5 py-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md text-sm focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
-                  >
-                    <option value="">Select Question Type</option>
-                    <option value="MultipleChoice">MultipleChoice</option>
-                    <option value="SingleChoice">SingleChoice</option>
-                    <option value="TrueFalse">TrueFalse</option>
-                  </select>
+                  {isLoadingQuestions ? (
+                    <div className="px-3.5 py-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md text-sm">
+                      Loading questions...
+                    </div>
+                  ) : (
+                    <select
+                      id="selectedQuestion"
+                      value={selectedQuestion}
+                      onChange={(e) => setSelectedQuestion(e.target.value)}
+                      className="px-3.5 py-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md text-sm focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
+                      required
+                    >
+                      <option value="">Select a Question</option>
+                      {allQuestions.map((question) => (
+                        <option key={question.id} value={question.id}>
+                          {question.content}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div className="flex flex-col gap-2">
                   <label htmlFor="questionOrder" className="text-sm font-semibold text-gray-800 dark:text-white">
@@ -522,7 +625,7 @@ const QuizManagement = () => {
                   </label>
                   <input
                     id="questionOrder"
-                    type="text"
+                    type="number"
                     placeholder="Enter order of question in quiz"
                     value={questionOrder}
                     onChange={(e) => setQuestionOrder(e.target.value)}
@@ -533,6 +636,10 @@ const QuizManagement = () => {
               <div className="flex justify-end gap-3">
                 <button
                   type="button"
+                  onClick={() => {
+                    setSelectedQuestion('');
+                    setQuestionOrder('');
+                  }}
                   className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md text-sm font-semibold cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 transition-all"
                 >
                   <img src={clearIcon} alt="Cancel" width="16" height="16" />
@@ -540,10 +647,12 @@ const QuizManagement = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 dark:bg-blue-600 text-white rounded-md text-sm font-semibold cursor-pointer hover:bg-blue-600 dark:hover:bg-blue-700 transition-all"
+                  disabled={addQuestionMutation.isPending}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 dark:bg-blue-600 text-white rounded-md text-sm font-semibold cursor-pointer hover:bg-blue-600 dark:hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <img src={createIcon} alt="Add" width="16" height="16" />
-                  {' '}Add
+                  {' '}
+                  {addQuestionMutation.isPending ? 'Adding...' : 'Add'}
                 </button>
               </div>
             </form>

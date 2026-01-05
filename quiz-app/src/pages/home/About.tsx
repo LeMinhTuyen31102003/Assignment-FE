@@ -9,9 +9,9 @@ import avatar3 from '../../assets/images/user/avatar3.png';
 
 const About = () => {
   return (
-    <div>
+    <div className="min-h-screen bg-white dark:bg-gray-900">
       {/* About Section */}
-      <section className="pt-20 pb-20 bg-white dark:bg-gray-900">
+      <section className="pt-20 pb-20">
         <div className="max-w-7xl mx-auto px-5">
           <div className="flex items-start justify-between gap-20 flex-col lg:flex-row">
             <div className="flex-1 max-w-[500px]">
@@ -52,12 +52,12 @@ const About = () => {
       </section>
 
       {/* Team Section */}
-      <section className="py-20 bg-white dark:bg-gray-900">
+      <section className="py-20">
         <div className="max-w-7xl mx-auto px-5">
           <h2 className="text-center text-4xl font-bold text-gray-800 dark:text-white mb-16">Our Team</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 max-w-[1000px] mx-auto">
             <div className="bg-white dark:bg-gray-800 rounded-xl p-10 text-center shadow-lg hover:-translate-y-1 hover:shadow-xl transition-all">
-              <div className="w-[150px] h-[150px] mx-auto mb-6 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+              <div className="w-[150px] h-[150px] mx-auto mb-6 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
                 <img src={avatar1} alt="John Doe" className="w-full h-full object-cover" />
               </div>
               <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">John Doe</h3>
@@ -65,15 +65,15 @@ const About = () => {
             </div>
 
             <div className="bg-white dark:bg-gray-800 rounded-xl p-10 text-center shadow-lg hover:-translate-y-1 hover:shadow-xl transition-all">
-              <div className="w-[150px] h-[150px] mx-auto mb-6 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+              <div className="w-[150px] h-[150px] mx-auto mb-6 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
                 <img src={avatar2} alt="Jane Doe" className="w-full h-full object-cover" />
               </div>
               <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">Jane Doe</h3>
-              <p className="text-sm text-gray-400 dark:text-gray-400">Back End Developer</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Back End Developer</p>
             </div>
 
             <div className="bg-white dark:bg-gray-800 rounded-xl p-10 text-center shadow-lg hover:-translate-y-1 hover:shadow-xl transition-all">
-              <div className="w-[150px] h-[150px] mx-auto mb-6 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+              <div className="w-[150px] h-[150px] mx-auto mb-6 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
                 <img src={avatar3} alt="John Smith" className="w-full h-full object-cover" />
               </div>
               <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">John Smith</h3>
