@@ -9,9 +9,12 @@ import quizIllustration from '../../assets/images/home/quiz.png';
 const Home = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthContext();
-  const { data: quizzes, isLoading, isError, error } = useQuizzes({
-    enabled: isAuthenticated,
+  const { data: quizzesData, isLoading, isError, error } = useQuizzes({
+    page: 0,
+    size: 6,
   });
+  
+  const quizzes = quizzesData?.content || [];
 
   const handleStartQuiz = (quizId: string) => {
     if (!isAuthenticated) {
@@ -82,11 +85,9 @@ const Home = () => {
                 {quizzes.map((quiz) => (
                   <QuizCard
                     key={quiz.id}
-                    thumbnail={quiz.thumbnail}
                     title={quiz.title}
                     description={quiz.description}
                     duration={quiz.durationMinutes}
-                    difficulty={quiz.difficulty}
                     onStart={() => handleStartQuiz(quiz.id)}
                   />
                 ))}

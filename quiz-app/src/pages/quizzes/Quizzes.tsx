@@ -11,9 +11,12 @@ const Quizzes = () => {
   const { isAuthenticated } = useAuthContext();
   const [quizCode, setQuizCode] = useState('');
   const [isLoadingCode, setIsLoadingCode] = useState(false);
-  const { data: quizzes = [], isLoading, isError, error } = useQuizzes({
-    enabled: isAuthenticated,
+  const { data: quizzesData, isLoading, isError, error } = useQuizzes({
+    page: 0,
+    size: 100,
   });
+  
+  const quizzes = quizzesData?.content || [];
 
   const handleTakeQuiz = () => {
     if (!quizCode.trim()) {
@@ -135,11 +138,9 @@ const Quizzes = () => {
                   {quizzes.map((quiz) => (
                     <QuizCard
                       key={quiz.id}
-                      thumbnail={quiz.thumbnail}
                       title={quiz.title}
                       description={quiz.description}
                       duration={quiz.durationMinutes}
-                      difficulty={quiz.difficulty}
                       onStart={() => handleStartQuiz(quiz.id)}
                     />
                   ))}
