@@ -35,24 +35,24 @@ export default function QuizCard({
   }, [title]);
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-lg hover:-translate-y-1 hover:shadow-xl transition-all">
-      <div className="w-full h-[200px] overflow-hidden">
+    <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-lg hover:-translate-y-1 hover:shadow-xl transition-all flex flex-col h-full">
+      <div className="w-full h-[200px] overflow-hidden flex-shrink-0">
         <img 
           src={thumbnail || randomImage} 
           alt={title} 
           className="w-full h-full object-cover" 
         />
       </div>
-      <div className="p-5">
+      <div className="p-5 flex flex-col flex-grow">
         <div className="flex justify-between items-start gap-2 mb-2.5">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-white line-clamp-2 flex-1">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-white line-clamp-2 flex-1 min-h-[3.5rem]">
             {title}
           </h3>
           <span className="text-sm text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
             {duration} min
           </span>
         </div>
-        <p className="text-sm text-gray-600 dark:text-gray-300 mb-5 line-clamp-2">{description}</p>
+        <p className="text-sm text-gray-600 dark:text-gray-300 mb-5 line-clamp-2 min-h-[2.5rem]">{description}</p>
         {difficulty && (
           <div className="mb-3">
             <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${difficultyColors[difficulty]}`}>
@@ -62,7 +62,7 @@ export default function QuizCard({
         )}
         <button
           onClick={onStart}
-          className="w-full py-3 bg-blue-500 dark:bg-blue-600 text-white rounded text-base font-semibold cursor-pointer hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors"
+          className="w-full py-3 bg-blue-500 dark:bg-blue-600 text-white rounded text-base font-semibold cursor-pointer hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors mt-auto"
         >
           Start
         </button>

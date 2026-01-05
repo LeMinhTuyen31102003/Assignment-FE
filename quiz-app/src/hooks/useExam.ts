@@ -6,19 +6,29 @@ export interface ExamSubmission {
   quizId: string;
   answers: {
     questionId: string;
-    selectedAnswerId: string;
+    selectedAnswerIds: string[];
   }[];
   timeSpent?: number;
 }
 
 export interface ExamResult {
-  id: string;
-  score: number;
+  submissionId: string;
+  quizTitle: string;
   totalQuestions: number;
   correctAnswers: number;
-  incorrectAnswers: number;
-  submittedAt: string;
-  quizTitle: string;
+  totalScore: number;
+  earnedScore: number;
+  percentage: number;
+  passed: boolean;
+  submissionTime: string;
+  questionResults: {
+    questionId: string;
+    questionContent: string;
+    questionScore: number;
+    isCorrect: boolean;
+    submittedAnswerIds: string[];
+    correctAnswerIds: string[];
+  }[];
 }
 
 export interface QuizWithQuestionsAndAnswers {
@@ -92,8 +102,22 @@ export function useQuizForExam(quizId: string) {
   return useQuery({
     queryKey: ['quiz-exam', quizId],
     queryFn: async () => {
-      const response = await apiClient.get<QuizWithQuestionsAndAnswers>(`/quizzes/${quizId}`);
-      return response.data;
+      // First, get the quiz with basic question info
+      const quizResponse = await apiClient.get(`/quizzes/${quizId}`);
+      const quiz = quizResponse.data;
+      
+      // Then, fetch full details for each question (including answers)
+      const questionDetailsPromises = quiz.questions.map((q: { id: string }) =>
+        apiClient.get(`/questions/${q.id}`)
+      );
+      
+      const questionDetailsResponses = await Promise.all(questionDetailsPromises);
+      const questionsWithAnswers = questionDetailsResponses.map((res) => res.data);
+      
+      return {
+        ...quiz,
+        questions: questionsWithAnswers,
+      } as QuizWithQuestionsAndAnswers;
     },
     enabled: !!quizId,
   });

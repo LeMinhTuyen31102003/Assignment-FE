@@ -2,11 +2,26 @@ import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/useAuthContext';
 
+interface QuestionResult {
+  questionId: string;
+  questionContent: string;
+  questionScore: number;
+  isCorrect: boolean;
+  submittedAnswerIds: string[];
+  correctAnswerIds: string[];
+}
+
 interface ResultState {
-  score: number;
+  submissionId: string;
+  quizTitle: string;
   totalQuestions: number;
   correctAnswers: number;
-  quizTitle: string;
+  totalScore: number;
+  earnedScore: number;
+  percentage: number;
+  passed: boolean;
+  submissionTime: string;
+  questionResults: QuestionResult[];
 }
 
 const QuizResult = () => {
@@ -30,9 +45,8 @@ const QuizResult = () => {
     return null;
   }
 
-  const { score, totalQuestions, correctAnswers, quizTitle } = state;
+  const { percentage, totalQuestions, correctAnswers, quizTitle, earnedScore, totalScore, passed, questionResults } = state;
   const incorrectAnswers = totalQuestions - correctAnswers;
-  const isPassed = score >= 70;
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 py-12">
@@ -41,7 +55,7 @@ const QuizResult = () => {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 text-center">
           {/* Status Icon */}
           <div className="mb-6">
-            {isPassed ? (
+            {passed ? (
               <div className="w-24 h-24 mx-auto bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
                 <svg
                   className="w-12 h-12 text-green-500"
@@ -78,7 +92,7 @@ const QuizResult = () => {
 
           {/* Title */}
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">
-            {isPassed ? 'Congratulations!' : 'Keep Trying!'}
+            {passed ? 'Congratulations!' : 'Keep Trying!'}
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mb-8">{quizTitle}</p>
 
@@ -104,16 +118,16 @@ const QuizResult = () => {
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="12"
-                  strokeDasharray={`${(score / 100) * 565.48} 565.48`}
+                  strokeDasharray={`${(percentage / 100) * 565.48} 565.48`}
                   strokeLinecap="round"
                   transform="rotate(-90 100 100)"
-                  className={isPassed ? 'text-green-500' : 'text-red-500'}
+                  className={passed ? 'text-green-500' : 'text-red-500'}
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
                 <div>
-                  <div className="text-5xl font-bold text-gray-800 dark:text-white">{score}%</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">Your Score</div>
+                  <div className="text-5xl font-bold text-gray-800 dark:text-white">{percentage}%</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">{earnedScore}/{totalScore} points</div>
                 </div>
               </div>
             </div>
@@ -138,20 +152,57 @@ const QuizResult = () => {
           {/* Pass/Fail Message */}
           <div
             className={`p-4 rounded-lg mb-8 ${
-              isPassed
+              passed
                 ? 'bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700'
                 : 'bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700'
             }`}
           >
             <p
               className={`font-semibold ${
-                isPassed ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'
+                passed ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'
               }`}
             >
-              {isPassed
+              {passed
                 ? '✓ You have passed this quiz! Great job!'
                 : '✗ You need at least 70% to pass. Try again!'}
             </p>
+          </div>
+
+          {/* Question Results Details */}
+          <div className="mb-8 text-left">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Question Details</h3>
+            <div className="space-y-3">
+              {questionResults.map((result, index) => (
+                <div
+                  key={result.questionId}
+                  className={`p-4 rounded-lg border-2 ${
+                    result.isCorrect
+                      ? 'bg-green-50 dark:bg-green-900/10 border-green-300 dark:border-green-700'
+                      : 'bg-red-50 dark:bg-red-900/10 border-red-300 dark:border-red-700'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                        result.isCorrect
+                          ? 'bg-green-500 text-white'
+                          : 'bg-red-500 text-white'
+                      }`}
+                    >
+                      {result.isCorrect ? '✓' : '✗'}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-800 dark:text-white mb-1">
+                        Question {index + 1}: {result.questionContent}
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Points: {result.isCorrect ? result.questionScore : 0}/{result.questionScore}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Action Buttons */}

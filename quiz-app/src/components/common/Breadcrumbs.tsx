@@ -9,18 +9,33 @@ export default function Breadcrumbs() {
     const crumbs = [{ name: 'Home', path: '/' }];
 
     let currentPath = '';
-    paths.forEach((segment) => {
+    paths.forEach((segment, index) => {
       currentPath += `/${segment}`;
+      
       // Convert path segment to readable name
-      const name = segment
+      let name = segment
         .split('-')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
-      crumbs.push({ name, path: currentPath });
+      
+      // Handle special cases
+      let path = currentPath;
+      if (segment === 'quiz' && index === 0) {
+        // If first segment is 'quiz', redirect to 'quizzes'
+        name = 'Quizzes';
+        path = '/quizzes';
+      }
+      
+      // If this is a quiz ID (comes after 'quiz' segment) and we have quiz title in state
+      if (index > 0 && paths[index - 1] === 'quiz' && location.state?.quizTitle) {
+        name = location.state.quizTitle;
+      }
+      
+      crumbs.push({ name, path });
     });
 
     return crumbs;
-  }, [location.pathname]);
+  }, [location.pathname, location.state]);
 
   // Don't show breadcrumbs on home page or auth pages
   if (location.pathname === '/' || location.pathname.startsWith('/login') || location.pathname.startsWith('/register')) {

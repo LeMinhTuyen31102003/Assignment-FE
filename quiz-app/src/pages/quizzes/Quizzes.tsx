@@ -46,8 +46,11 @@ const Quizzes = () => {
       return;
     }
     
-    // Navigate to quiz taking page
-    navigate(`/quiz/${quizId}`);
+    // Find quiz to get title
+    const quiz = quizzes.find(q => q.id === quizId);
+    
+    // Navigate to quiz taking page with quiz title
+    navigate(`/quiz/${quizId}`, { state: { quizTitle: quiz?.title } });
   };
 
   return (
