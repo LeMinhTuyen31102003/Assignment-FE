@@ -1,4 +1,7 @@
-import { useState, type FormEvent } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useState } from 'react';
 import mailIcon from '../../assets/images/home/mail.png';
 import phoneIcon from '../../assets/images/home/phone.png';
 import mapIcon from '../../assets/images/home/map.png';
@@ -7,44 +10,40 @@ import facebookIcon from '../../assets/images/contact/facebook.png';
 import youtubeIcon from '../../assets/images/contact/youtube.png';
 import linkedinIcon from '../../assets/images/contact/linkedin.png';
 
+const contactSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  email: z.string()
+    .min(1, 'Email is required')
+    .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please enter a valid email'),
+  message: z.string().min(10, 'Message must be at least 10 characters'),
+});
+
+type ContactFormData = z.infer<typeof contactSchema>;
+
 const Contact = () => {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    message: ''
-  });
   const [showSuccess, setShowSuccess] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    
-    if (!formData.name || !formData.email || !formData.message) {
-      alert('Please fill in all fields');
-      return;
-    }
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<ContactFormData>({
+    resolver: zodResolver(contactSchema),
+  });
 
-    setIsSubmitting(true);
-    
+  const onSubmit = async (data: ContactFormData) => {
     // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    
+    console.log('Form submitted:', data);
+    setShowSuccess(true);
+    reset();
+    
+    // Hide success message after 3 seconds
     setTimeout(() => {
-      console.log('Form submitted:', formData);
-      setShowSuccess(true);
-      setFormData({ name: '', email: '', message: '' });
-      setIsSubmitting(false);
-      
-      // Hide success message after 3 seconds
-      setTimeout(() => {
-        setShowSuccess(false);
-      }, 3000);
-    }, 1000);
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+      setShowSuccess(false);
+    }, 3000);
   };
 
   return (
@@ -65,7 +64,7 @@ const Contact = () => {
               </div>
             )}
             
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit(onSubmit)}>
               <div className="mb-6">
                 <label htmlFor="name" className="block text-sm font-semibold text-gray-800 dark:text-white mb-2">
                   Name
@@ -73,13 +72,13 @@ const Contact = () => {
                 <input
                   type="text"
                   id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
                   placeholder="Enter your name"
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md text-sm font-sans focus:outline-none focus:border-blue-500 transition-colors placeholder-gray-400"
+                  {...register('name')}
+                  className={`w-full px-4 py-3 border ${errors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} dark:bg-gray-700 dark:text-white rounded-md text-sm font-sans focus:outline-none focus:border-blue-500 transition-colors placeholder-gray-400`}
                 />
+                {errors.name && (
+                  <span className="text-red-500 text-xs mt-1 block">{errors.name.message}</span>
+                )}
               </div>
               
               <div className="mb-6">
@@ -89,13 +88,13 @@ const Contact = () => {
                 <input
                   type="email"
                   id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
                   placeholder="Enter your email"
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md text-sm font-sans focus:outline-none focus:border-blue-500 transition-colors placeholder-gray-400"
+                  {...register('email')}
+                  className={`w-full px-4 py-3 border ${errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} dark:bg-gray-700 dark:text-white rounded-md text-sm font-sans focus:outline-none focus:border-blue-500 transition-colors placeholder-gray-400`}
                 />
+                {errors.email && (
+                  <span className="text-red-500 text-xs mt-1 block">{errors.email.message}</span>
+                )}
               </div>
               
               <div className="mb-6">
@@ -104,21 +103,19 @@ const Contact = () => {
                 </label>
                 <textarea
                   id="message"
-                  name="message"
-                  value={formData.message}
-                  onChange={handleChange}
                   placeholder="Enter your message"
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md text-sm font-sans focus:outline-none focus:border-blue-500 transition-colors placeholder-gray-400 resize-y min-h-[120px]"
+                  {...register('message')}
+                  className={`w-full px-4 py-3 border ${errors.message ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} dark:bg-gray-700 dark:text-white rounded-md text-sm font-sans focus:outline-none focus:border-blue-500 transition-colors placeholder-gray-400 resize-y min-h-[120px]`}
                 />
+                {errors.message && (
+                  <span className="text-red-500 text-xs mt-1 block">{errors.message.message}</span>
+                )}
               </div>
               
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className={`px-8 py-3 bg-blue-500 dark:bg-blue-600 text-white rounded-md text-base font-semibold cursor-pointer hover:bg-blue-600 dark:hover:bg-blue-700 hover:-translate-y-0.5 hover:shadow-lg transition-all ${
-                  isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
-                }`}
+                className={`px-8 py-3 bg-blue-500 dark:bg-blue-600 text-white rounded-md text-base font-semibold cursor-pointer hover:bg-blue-600 dark:hover:bg-blue-700 hover:-translate-y-0.5 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:transform-none`}
               >
                 {isSubmitting ? 'Sending...' : 'Send'}
               </button>

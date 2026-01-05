@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ThemeToggle } from '@/components/common';
+import { useAuthContext } from '@/contexts/useAuthContext';
 import logo from '../../assets/images/home/logo.png';
 import adminAvatar from '../../assets/images/user/admin.png';
 
 const Header = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isAuthenticated] = useState(false); // Thay đổi thành true khi user đăng nhập
+  const { user, isAuthenticated, logout } = useAuthContext();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const toggleUserMenu = () => {
     setIsUserMenuOpen(!isUserMenuOpen);
@@ -88,23 +90,27 @@ const Header = () => {
               </button>
               
               {isUserMenuOpen && (
-                <div className="absolute top-full mt-2.5 right-0 bg-white rounded-lg shadow-lg min-w-[180px] opacity-100 visible translate-y-0 transition-all z-50">
-                  <div className="absolute top-[-8px] right-[15px] w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-b-8 border-b-white"></div>
+                <div className="absolute top-full mt-2.5 right-0 bg-white dark:bg-gray-800 rounded-lg shadow-lg min-w-[180px] opacity-100 visible translate-y-0 transition-all z-50">
+                  <div className="absolute top-[-8px] right-[15px] w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-b-8 border-b-white dark:border-b-gray-800"></div>
                   <Link 
                     to="/profile" 
-                    className="block px-4 py-2.5 text-gray-600 text-sm hover:bg-gray-50 hover:text-blue-500 transition-all"
+                    className="block px-4 py-2.5 text-gray-600 dark:text-gray-300 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-blue-500 transition-all"
                   >
-                    Tuyên Lê
+                    {user?.fullName || 'User'}
                   </Link>
                   <Link 
                     to="/change-password" 
-                    className="block px-4 py-2.5 text-gray-600 text-sm hover:bg-gray-50 hover:text-blue-500 transition-all"
+                    className="block px-4 py-2.5 text-gray-600 dark:text-gray-300 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-blue-500 transition-all"
                   >
                     Change Password
                   </Link>
                   <button 
-                    onClick={() => console.log('Logout')}
-                    className="w-full text-left block px-4 py-2.5 text-red-500 text-sm border-t border-gray-200 hover:bg-red-50 transition-all"
+                    onClick={() => {
+                      logout();
+                      setIsUserMenuOpen(false);
+                      navigate('/login');
+                    }}
+                    className="w-full text-left block px-4 py-2.5 text-red-500 text-sm border-t border-gray-200 dark:border-gray-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
                   >
                     Logout
                   </button>

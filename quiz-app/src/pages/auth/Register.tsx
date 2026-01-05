@@ -1,50 +1,49 @@
-import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
+import { useAuth } from '@/hooks/useAuth';
 import registerBg from '../../assets/images/auth/d0cdc9e65a2ca9c7e53886f43f0cf62356d4105f.png';
 
-interface FormData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  username: string;
-  phone: string;
-  password: string;
-  confirmPassword: string;
-}
+const registerSchema = z.object({
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  email: z.string()
+    .min(1, 'Email is required')
+    .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please enter a valid email'),
+  username: z.string().min(1, 'Username is required'),
+  phone: z.string().min(1, 'Phone number is required'),
+  password: z.string()
+    .min(6, 'Password must be at least 6 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/\d/, 'Password must contain at least one number'),
+  confirmPassword: z.string().min(1, 'Please confirm your password'),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ['confirmPassword'],
+});
 
-interface FormErrors {
-  firstName: boolean;
-  lastName: boolean;
-  email: boolean;
-  username: boolean;
-  phone: boolean;
-  password: boolean;
-  confirmPassword: boolean;
-}
-
+type RegisterFormData = z.infer<typeof registerSchema>;
 type PasswordStrength = 'weak' | 'medium' | 'strong' | '';
 
 export default function Register() {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState<FormData>({
-    firstName: '',
-    lastName: '',
-    email: '',
-    username: '',
-    phone: '',
-    password: '',
-    confirmPassword: '',
-  });
-  const [errors, setErrors] = useState<FormErrors>({
-    firstName: false,
-    lastName: false,
-    email: false,
-    username: false,
-    phone: false,
-    password: false,
-    confirmPassword: false,
-  });
+  const { register: registerUser } = useAuth();
   const [passwordStrength, setPasswordStrength] = useState<PasswordStrength>('');
+  
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
+  });
+
+  const password = watch('password', '');
 
   const calculatePasswordStrength = (password: string): PasswordStrength => {
     if (password.length === 0) return '';
@@ -53,40 +52,30 @@ export default function Register() {
     return 'strong';
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    setErrors(prev => ({ ...prev, [name]: false }));
+  // Update password strength whenever password changes
+  useEffect(() => {
+    setPasswordStrength(calculatePasswordStrength(password));
+  }, [password]);
 
-    if (name === 'password') {
-      setPasswordStrength(calculatePasswordStrength(value));
-    }
-  };
-
-  const validateEmail = (email: string): boolean => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const newErrors: FormErrors = {
-      firstName: !formData.firstName.trim(),
-      lastName: !formData.lastName.trim(),
-      email: !validateEmail(formData.email),
-      username: !formData.username.trim(),
-      phone: !formData.phone.trim(),
-      password: !formData.password,
-      confirmPassword: formData.password !== formData.confirmPassword,
-    };
-
-    setErrors(newErrors);
-
-    const hasErrors = Object.values(newErrors).some(Boolean);
-    if (!hasErrors) {
-      console.log('Registration successful:', formData);
-      // Handle registration logic here
-      navigate('/');
+  const onSubmit = async (data: RegisterFormData) => {
+    try {
+      // Transform data to match backend API format
+      const registerPayload = {
+        email: data.email,
+        password: data.password,
+        fullName: `${data.firstName} ${data.lastName}`.trim(),
+        phone: data.phone,
+      };
+      
+      await registerUser(registerPayload);
+      toast.success('Registration successful! Please login.');
+      setTimeout(() => navigate('/login'), 1000);
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(error.message || 'Registration failed. Please try again.');
+      } else {
+        toast.error('Registration failed. Please try again.');
+      }
     }
   };
 
@@ -130,7 +119,7 @@ export default function Register() {
         <div className="bg-white rounded-xl p-8 md:px-10 md:py-8 shadow-[0_10px_40px_rgba(0,0,0,0.2)] animate-slide-in max-h-screen overflow-y-auto">
           <h1 className="text-center text-gray-800 text-3xl mb-5 font-bold">Register</h1>
 
-          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+          <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="form-group flex flex-col gap-2">
                 <label htmlFor="firstName" className="text-sm font-semibold text-gray-800">
@@ -139,16 +128,14 @@ export default function Register() {
                 <input
                   type="text"
                   id="firstName"
-                  name="firstName"
-                  value={formData.firstName}
-                  onChange={handleChange}
                   placeholder="Enter your first name"
+                  {...register('firstName')}
                   className={`px-4 py-3 border ${
                     errors.firstName ? 'border-red-500' : 'border-gray-300'
                   } rounded-md text-sm transition-all outline-none placeholder-gray-400 focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(77,166,255,0.1)]`}
                 />
                 {errors.firstName && (
-                  <span className="text-red-500 text-xs mt-1">This field is required</span>
+                  <span className="text-red-500 text-xs mt-1">{errors.firstName.message}</span>
                 )}
               </div>
 
@@ -159,16 +146,14 @@ export default function Register() {
                 <input
                   type="text"
                   id="lastName"
-                  name="lastName"
-                  value={formData.lastName}
-                  onChange={handleChange}
                   placeholder="Enter your last name"
+                  {...register('lastName')}
                   className={`px-4 py-3 border ${
                     errors.lastName ? 'border-red-500' : 'border-gray-300'
                   } rounded-md text-sm transition-all outline-none placeholder-gray-400 focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(77,166,255,0.1)]`}
                 />
                 {errors.lastName && (
-                  <span className="text-red-500 text-xs mt-1">This field is required</span>
+                  <span className="text-red-500 text-xs mt-1">{errors.lastName.message}</span>
                 )}
               </div>
             </div>
@@ -180,16 +165,14 @@ export default function Register() {
               <input
                 type="email"
                 id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
                 placeholder="Enter your email"
+                {...register('email')}
                 className={`px-4 py-3 border ${
                   errors.email ? 'border-red-500' : 'border-gray-300'
                 } rounded-md text-sm transition-all outline-none placeholder-gray-400 focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(77,166,255,0.1)]`}
               />
               {errors.email && (
-                <span className="text-red-500 text-xs mt-1">Please enter a valid email</span>
+                <span className="text-red-500 text-xs mt-1">{errors.email.message}</span>
               )}
             </div>
 
@@ -201,16 +184,14 @@ export default function Register() {
                 <input
                   type="text"
                   id="username"
-                  name="username"
-                  value={formData.username}
-                  onChange={handleChange}
                   placeholder="Enter your username"
+                  {...register('username')}
                   className={`px-4 py-3 border ${
                     errors.username ? 'border-red-500' : 'border-gray-300'
                   } rounded-md text-sm transition-all outline-none placeholder-gray-400 focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(77,166,255,0.1)]`}
                 />
                 {errors.username && (
-                  <span className="text-red-500 text-xs mt-1">This field is required</span>
+                  <span className="text-red-500 text-xs mt-1">{errors.username.message}</span>
                 )}
               </div>
 
@@ -221,16 +202,14 @@ export default function Register() {
                 <input
                   type="tel"
                   id="phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
                   placeholder="Enter your phone number"
+                  {...register('phone')}
                   className={`px-4 py-3 border ${
                     errors.phone ? 'border-red-500' : 'border-gray-300'
                   } rounded-md text-sm transition-all outline-none placeholder-gray-400 focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(77,166,255,0.1)]`}
                 />
                 {errors.phone && (
-                  <span className="text-red-500 text-xs mt-1">This field is required</span>
+                  <span className="text-red-500 text-xs mt-1">{errors.phone.message}</span>
                 )}
               </div>
             </div>
@@ -242,10 +221,10 @@ export default function Register() {
               <input
                 type="password"
                 id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
                 placeholder="Enter your password"
+                {...register('password', {
+                  onChange: (e) => setPasswordStrength(calculatePasswordStrength(e.target.value))
+                })}
                 className={`px-4 py-3 border ${
                   errors.password ? 'border-red-500' : 'border-gray-300'
                 } rounded-md text-sm transition-all outline-none placeholder-gray-400 focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(77,166,255,0.1)]`}
@@ -254,7 +233,7 @@ export default function Register() {
                 <div className={`password-strength-bar h-full w-0 transition-all rounded-sm ${passwordStrength}`}></div>
               </div>
               {errors.password && (
-                <span className="text-red-500 text-xs mt-1">Password is required</span>
+                <span className="text-red-500 text-xs mt-1">{errors.password.message}</span>
               )}
             </div>
 
@@ -265,16 +244,14 @@ export default function Register() {
               <input
                 type="password"
                 id="confirmPassword"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
                 placeholder="Confirm your password"
+                {...register('confirmPassword')}
                 className={`px-4 py-3 border ${
                   errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
                 } rounded-md text-sm transition-all outline-none placeholder-gray-400 focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(77,166,255,0.1)]`}
               />
               {errors.confirmPassword && (
-                <span className="text-red-500 text-xs mt-1">Passwords do not match</span>
+                <span className="text-red-500 text-xs mt-1">{errors.confirmPassword.message}</span>
               )}
             </div>
 
@@ -288,9 +265,10 @@ export default function Register() {
               </button>
               <button
                 type="submit"
-                className="flex-1 px-6 py-3 bg-blue-500 text-white border-none rounded-md text-base font-semibold cursor-pointer transition-all hover:bg-blue-600 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(77,166,255,0.4)]"
+                disabled={isSubmitting}
+                className="flex-1 px-6 py-3 bg-blue-500 text-white border-none rounded-md text-base font-semibold cursor-pointer transition-all hover:bg-blue-600 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(77,166,255,0.4)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:transform-none"
               >
-                Register
+                {isSubmitting ? 'Registering...' : 'Register'}
               </button>
             </div>
           </form>

@@ -1,27 +1,51 @@
-import { useState, type FormEvent } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import { useAuth } from '@/hooks/useAuth';
+import { useAuthContext } from '@/contexts/useAuthContext';
 import loginBg from '../../assets/images/auth/d0cdc9e65a2ca9c7e53886f43f0cf62356d4105f.png';
+
+const loginSchema = z.object({
+  email: z.string()
+    .min(1, 'Email is required')
+    .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please enter a valid email'),
+  password: z.string().min(1, 'Password is required'),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
 
 const Login = () => {
   const navigate = useNavigate();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [errors, setErrors] = useState({ username: false, password: false });
+  const { login: loginApi } = useAuth();
+  const { login: setAuthUser } = useAuthContext();
+  
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    const newErrors = {
-      username: username.trim() === '',
-      password: password.trim() === '',
-    };
-
-    setErrors(newErrors);
-
-    if (!newErrors.username && !newErrors.password) {
-      console.log('Login submitted:', { username, password });
-      // TODO: Implement actual login logic
-      // navigate('/');
+  const onSubmit = async (data: LoginFormData) => {
+    try {
+      const result = await loginApi(data);
+      
+      if (result) {
+        setAuthUser(result.user);
+        toast.success('Login successful!');
+        navigate('/');
+      } else {
+        toast.error('Invalid email or password. Please try again.');
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(error.message || 'Login failed. Please check your connection.');
+      } else {
+        toast.error('Login failed. Please try again.');
+      }
     }
   };
 
@@ -41,29 +65,24 @@ const Login = () => {
         <div className="bg-white rounded-xl p-10 shadow-[0_10px_40px_rgba(0,0,0,0.2)] animate-[slideIn_0.5s_ease-out]">
           <h1 className="text-center text-gray-800 text-4xl mb-8 font-bold">Login</h1>
 
-          <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+          <form className="flex flex-col gap-5" onSubmit={handleSubmit(onSubmit)}>
             <div className="flex flex-col gap-2">
-              <label htmlFor="username" className="text-sm font-semibold text-gray-800">
-                Username
+              <label htmlFor="email" className="text-sm font-semibold text-gray-800">
+                Email
               </label>
               <input
-                type="text"
-                id="username"
-                name="username"
-                placeholder="Enter your username"
-                value={username}
-                onChange={(e) => {
-                  setUsername(e.target.value);
-                  setErrors((prev) => ({ ...prev, username: false }));
-                }}
+                type="email"
+                id="email"
+                placeholder="Enter your email"
+                {...register('email')}
                 className={`px-4 py-3 border rounded-md text-sm transition-all outline-none placeholder-gray-400 focus:shadow-[0_0_0_3px_rgba(77,166,255,0.1)] ${
-                  errors.username
+                  errors.email
                     ? 'border-red-500 focus:border-red-500'
                     : 'border-gray-300 focus:border-blue-500'
                 }`}
               />
-              {errors.username && (
-                <span className="text-red-500 text-xs mt-1">This field is required</span>
+              {errors.email && (
+                <span className="text-red-500 text-xs mt-1">{errors.email.message}</span>
               )}
             </div>
 
@@ -74,13 +93,8 @@ const Login = () => {
               <input
                 type="password"
                 id="password"
-                name="password"
                 placeholder="Enter your password"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  setErrors((prev) => ({ ...prev, password: false }));
-                }}
+                {...register('password')}
                 className={`px-4 py-3 border rounded-md text-sm transition-all outline-none placeholder-gray-400 focus:shadow-[0_0_0_3px_rgba(77,166,255,0.1)] ${
                   errors.password
                     ? 'border-red-500 focus:border-red-500'
@@ -88,7 +102,7 @@ const Login = () => {
                 }`}
               />
               {errors.password && (
-                <span className="text-red-500 text-xs mt-1">This field is required</span>
+                <span className="text-red-500 text-xs mt-1">{errors.password.message}</span>
               )}
             </div>
 
@@ -102,9 +116,10 @@ const Login = () => {
               </button>
               <button
                 type="submit"
-                className="flex-1 px-6 py-3 bg-blue-500 text-white border-none rounded-md text-base font-semibold cursor-pointer transition-all hover:bg-blue-600 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(77,166,255,0.4)]"
+                disabled={isSubmitting}
+                className="flex-1 px-6 py-3 bg-blue-500 text-white border-none rounded-md text-base font-semibold cursor-pointer transition-all hover:bg-blue-600 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(77,166,255,0.4)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:transform-none"
               >
-                Login
+                {isSubmitting ? 'Logging in...' : 'Login'}
               </button>
             </div>
 
